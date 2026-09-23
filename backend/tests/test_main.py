@@ -13,12 +13,14 @@ def make_client(monkeypatch, tmp_path):
     monkeypatch.setattr(main.database, "DB_PATH", tmp_path / "test_main.db")
 
     monkeypatch.setattr(
-        main, "generate_horoscope",
-        lambda sign, mood, chaos_level, date: f"Fake horoscope for {sign} feeling {mood}."
+        main,
+        "generate_horoscope",
+        lambda sign, mood, chaos_level, date: f"Fake horoscope for {sign} feeling {mood}.",
     )
     monkeypatch.setattr(
-        main, "generate_horoscope_auto_mood",
-        lambda sign, chaos_level, date: (f"Fake auto horoscope for {sign}.", "excited")
+        main,
+        "generate_horoscope_auto_mood",
+        lambda sign, chaos_level, date: (f"Fake auto horoscope for {sign}.", "excited"),
     )
 
     return TestClient(main.app)

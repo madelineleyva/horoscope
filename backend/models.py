@@ -3,13 +3,30 @@ from typing import Literal
 from pydantic import BaseModel
 
 ZodiacSign = Literal[
-    "aries", "taurus", "gemini", "cancer", "leo", "virgo",
-    "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces",
+    "aries",
+    "taurus",
+    "gemini",
+    "cancer",
+    "leo",
+    "virgo",
+    "libra",
+    "scorpio",
+    "sagittarius",
+    "capricorn",
+    "aquarius",
+    "pisces",
 ]
 
 Mood = Literal[
-    "stressed", "anxious", "calm", "neutral", "excited",
-    "passionate", "happy", "romantic", "bored",
+    "stressed",
+    "anxious",
+    "calm",
+    "neutral",
+    "excited",
+    "passionate",
+    "happy",
+    "romantic",
+    "bored",
 ]
 
 ChaosLevel = Literal[1, 2, 3]

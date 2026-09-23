@@ -18,8 +18,17 @@ def test_build_prompt_includes_key_details():
 def test_build_auto_mood_prompt_lists_all_mood_options():
     prompt = build_auto_mood_prompt("aries", 1, "2026-09-22")
     # Every preset mood should be offered as a choice for the LLM.
-    for mood in ["stressed", "anxious", "calm", "neutral", "excited",
-                 "passionate", "happy", "romantic", "bored"]:
+    for mood in [
+        "stressed",
+        "anxious",
+        "calm",
+        "neutral",
+        "excited",
+        "passionate",
+        "happy",
+        "romantic",
+        "bored",
+    ]:
         assert mood in prompt
     assert "JSON" in prompt
 

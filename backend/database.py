@@ -131,7 +131,5 @@ def insert_horoscope(
             """,
             (sign, date, mood, mood_color, chaos_level, horoscope_text, mood_source),
         )
-        row = conn.execute(
-            "SELECT * FROM horoscopes WHERE id = ?", (cursor.lastrowid,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM horoscopes WHERE id = ?", (cursor.lastrowid,)).fetchone()
         return dict(row)

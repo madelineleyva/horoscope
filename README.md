@@ -1,6 +1,6 @@
-# Horoscope App
+# Horoscope98 App
 
-An LLM-generated daily horoscope app with a "mood-ring" twist!  
+An LLM-assisted daily horoscope app with a "mood ring" twist!  
 
 Pick your sign, dial in a chaos level, and have Claude write you a horoscope and generate a matching mood, shown as a color-shifting heart. <3
 
@@ -34,16 +34,16 @@ This local dev project was created in conjunction with Claude/Anthropic tools. M
 ## Architecture
 
 ```
-┌─────────────┐        ┌──────────────┐        ┌───────────────┐
-│   React UI   │──────▶│  FastAPI      │──────▶│  Claude API     │
+┌───────────────┐        ┌──────────────┐        ┌─────────────────┐
+│   React UI    │──────▶│  FastAPI      │──────▶│  Claude API     │
 │ /main /classic│◀──────│  /horoscope   │◀──────│  (Anthropic SDK)│
-└─────────────┘        └──────┬───────┘        └───────────────┘
+└───────────────┘        └──────┬───────┘        └─────────────────┘
                                 │
                                 ▼
-                         ┌─────────────┐
+                         ┌──────────────┐
                          │   SQLite     │
                          │ (daily cache)│
-                         └─────────────┘
+                         └──────────────┘
 ```
 
 Each `/horoscope` request is keyed on `(sign, date, chaos_level)`, plus

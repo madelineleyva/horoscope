@@ -18,6 +18,8 @@ export default [
         window: 'readonly',
         console: 'readonly',
         fetch: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly'
       },
     },
     plugins: {

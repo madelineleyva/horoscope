@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchHoroscope } from './api'
+import Taskbar from "./Taskbar";
+import Win98Window from "./Win98Window";
 
 const SIGNS = [
   'aries',
@@ -22,6 +24,12 @@ const CHAOS_LABELS = {
   3: '3 - Unhinged',
 }
 
+const START_MENU_ITEMS = [
+  { label: "Classic Version", icon: "🖥️", href: "/classic" },
+  { label: "API Docs", icon: "📄", href: "http://localhost:8000/docs", external: true },
+];
+
+
 function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
@@ -32,6 +40,7 @@ export default function Win98Horoscope() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [windowState, setWindowState] = useState("open")
 
   // 98.css loads only when mounted
   useEffect(() => {
@@ -45,6 +54,10 @@ export default function Win98Horoscope() {
       document.getElementById('win98-css')?.remove()
     }
   }, [])
+
+   useEffect(() => {
+    document.getElementById("favicon")?.setAttribute("href", "/favicon-win98.svg");
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -64,109 +77,136 @@ export default function Win98Horoscope() {
   return (
     <div
       style={{
-        minHeight: '100vh',
-        background: '#008080',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem',
+        minHeight: "100vh",
+        background: "#008080",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "2rem",
+        paddingBottom: "calc(2rem + 34px)", // leave room for the fixed taskbar
         fontFamily: '"Pixelated MS Sans Serif", Arial, sans-serif',
       }}
     >
-      <div className="window" style={{ width: 520 }}>
-        <div className="title-bar">
-          <div className="title-bar-text">Generate a Horoscope</div>
-          <div className="title-bar-controls">
-            <button aria-label="Minimize"></button>
-            <button aria-label="Maximize"></button>
-            <button aria-label="Close"></button>
+      {windowState === "closed" && (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setWindowState("open")}
+          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setWindowState("open")}
+          style={{
+            position: "fixed",
+            top: 24,
+            left: 24,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 4,
+            width: 72,
+            cursor: "pointer",
+            userSelect: "none",
+          }}
+        >
+          <span style={{ fontSize: 40, lineHeight: 1 }}>🔮</span>
+          <span
+            style={{
+              color: "white",
+              fontSize: 12,
+              textAlign: "center",
+              textShadow: "1px 1px 1px black",
+            }}
+          >
+            Horoscope 98
+          </span>
+        </div>
+      )}
+ 
+      <Win98Window
+        title="Generate a Horoscope"
+        hidden={windowState !== "open"}
+        onMinimize={() => setWindowState("minimized")}
+        onClose={() => setWindowState("closed")}
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="field-row" style={{ marginBottom: 8 }}>
+            <label htmlFor="sign-select" style={{ width: 90 }}>
+              Zodiac Sign
+            </label>
+            <select
+              id="sign-select"
+              value={sign}
+              onChange={(e) => setSign(e.target.value)}
+            >
+              {SIGNS.map((s) => (
+                <option key={s} value={s}>
+                  {capitalize(s)}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-
-        <div className="window-body">
-          <form onSubmit={handleSubmit}>
-            <div className="field-row" style={{ marginBottom: 8 }}>
-              <label htmlFor="sign-select" style={{ width: 90 }}>
-                Zodiac Sign
-              </label>
-              <select
-                id="sign-select"
-                value={sign}
-                onChange={(e) => setSign(e.target.value)}
-              >
-                {SIGNS.map((s) => (
-                  <option key={s} value={s}>
-                    {capitalize(s)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="field-row" style={{ marginBottom: 12 }}>
-              <label htmlFor="chaos-select" style={{ width: 90 }}>
-                Chaos Level
-              </label>
-              <select
-                id="chaos-select"
-                value={chaosLevel}
-                onChange={(e) => setChaosLevel(Number(e.target.value))}
-              >
-                {[1, 2, 3].map((c) => (
-                  <option key={c} value={c}>
-                    {CHAOS_LABELS[c]}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <section className="field-row" style={{ justifyContent: 'flex-end' }}>
-              <button type="submit" disabled={loading}>
-                {loading ? 'Generating...' : 'Generate'}
-              </button>
-            </section>
-          </form>
-
-          {error && (
-            <div className="field-row" style={{ marginTop: 12, color: '#aa0000' }}>
-              Error: {error}
-            </div>
-          )}
-
-          {result && (
-            <fieldset style={{ marginTop: 16 }}>
-              <legend>Your Horoscope</legend>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <p style={{ flex: 1, margin: 0, lineHeight: 1.4 }}>
-                  {result.horoscope_text}
-                </p>
-                <Heart color={result.mood_color} />
-              </div>
-              <p
-                style={{
-                  marginTop: 12,
-                  marginBottom: 0,
-                  textAlign: 'center',
-                  textTransform: 'capitalize',
-                }}
-              >
-                Mood: {result.mood}
+ 
+          <div className="field-row" style={{ marginBottom: 12 }}>
+            <label htmlFor="chaos-select" style={{ width: 90 }}>
+              Chaos Level
+            </label>
+            <select
+              id="chaos-select"
+              value={chaosLevel}
+              onChange={(e) => setChaosLevel(Number(e.target.value))}
+            >
+              {[1, 2, 3].map((c) => (
+                <option key={c} value={c}>
+                  {CHAOS_LABELS[c]}
+                </option>
+              ))}
+            </select>
+          </div>
+ 
+          <section className="field-row" style={{ justifyContent: "flex-end" }}>
+            <button type="submit" disabled={loading}>
+              {loading ? "Generating..." : "Generate"}
+            </button>
+          </section>
+        </form>
+ 
+        {error && (
+          <div className="field-row" style={{ marginTop: 12, color: "#aa0000" }}>
+            Error: {error}
+          </div>
+        )}
+ 
+        {result && (
+          <fieldset style={{ marginTop: 16 }}>
+            <legend>Your Horoscope</legend>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <p style={{ flex: 1, margin: 0, lineHeight: 1.4 }}>
+                {result.horoscope_text}
               </p>
-            </fieldset>
-          )}
-        </div>
-
-        <div className="status-bar">
-          <p className="status-bar-field">{sign && capitalize(sign)}</p>
-          <p className="status-bar-field">
-            {result ? `Viewed ${result.view_count}x` : 'Ready'}
-          </p>
-          <p className="status-bar-field">
-            <a href="/classic">Classic version</a>
-          </p>
-        </div>
-      </div>
+              <Heart color={result.mood_color} />
+            </div>
+            <p
+              style={{
+                marginTop: 12,
+                marginBottom: 0,
+                textAlign: "center",
+                textTransform: "capitalize",
+              }}
+            >
+              Mood: {result.mood}
+            </p>
+          </fieldset>
+        )}
+      </Win98Window>
+ 
+      <Taskbar
+        menuItems={START_MENU_ITEMS}
+        runningApp={
+          windowState === "minimized"
+            ? { label: "Horoscope 98", icon: "🔮", onRestore: () => setWindowState("open") }
+            : null
+        }
+      />
     </div>
-  )
+  );
 }
 
 function Heart({ color }) {
