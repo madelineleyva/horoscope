@@ -4,7 +4,7 @@ An LLM-assisted daily horoscope app with a "mood ring" twist!
 
 Pick your sign, dial in a chaos level, and have Claude write you a horoscope and generate a matching mood, shown as a color-shifting heart. <3
 
-Shipped with two frontend options: a clean, modern, base UI and (my personal fav) a fully-committed Windows 98 recreation. 
+Shipped with two frontend options: a spooky crystal ball-esque base UI and (my personal fav and reason behind the name) a fully-committed Windows 98 recreation. 
 
 This local dev project was created in conjunction with Claude/Anthropic tools. Mostly meant to practice LLM intervention and the Anthropic SDK.
 
@@ -98,7 +98,7 @@ is served from SQLite and bumps `view_count`.
 
 Rough priority order for what's next:
 
-1. **Code quality & docs** _(in progress)_ — linting, formatting, this README
+1. **Code quality & docs** _(in progress - almost done)_ — linting, formatting, this README
 2. **Tests + CI** — pytest for backend logic (cache behavior, mood parsing),
    GitHub Actions to run lint/tests on every push
 3. **More features** — a `/stats` endpoint surfacing view counts per sign,
