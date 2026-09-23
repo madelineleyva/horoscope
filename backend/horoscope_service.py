@@ -78,19 +78,11 @@ in exactly this shape:
 """
 
 
-def generate_horoscope_auto_mood(sign: str, chaos_level: int, date: str) -> tuple[str, str]:
-    """Calls Claude, letting it choose the mood itself.
-    Returns (horoscope_text, mood)."""
-    prompt = build_auto_mood_prompt(sign, chaos_level, date)
-
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=300,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    text_parts = [block.text for block in response.content if block.type == "text"]
-    raw = "".join(text_parts).strip()
+def parse_mood_response(raw: str) -> tuple[str, str]:
+    """Parses the raw JSON text Claude returns into (horoscope_text, mood).
+    Pulled out from generate_horoscope_auto_mood so it can be unit tested
+    with sample strings, without needing a real API call. Raises ValueError
+    if the text can't be parsed as the expected shape."""
 
     # Defensive cleanup in case the model wraps the JSON in a code fence
     # despite being asked not to.
@@ -113,3 +105,20 @@ def generate_horoscope_auto_mood(sign: str, chaos_level: int, date: str) -> tupl
         mood = "neutral"
 
     return horoscope_text, mood
+
+
+def generate_horoscope_auto_mood(sign: str, chaos_level: int, date: str) -> tuple[str, str]:
+    """Calls Claude, letting it choose the mood itself.
+    Returns (horoscope_text, mood)."""
+    prompt = build_auto_mood_prompt(sign, chaos_level, date)
+
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=300,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    text_parts = [block.text for block in response.content if block.type == "text"]
+    raw = "".join(text_parts).strip()
+
+    return parse_mood_response(raw)

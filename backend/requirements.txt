@@ -6,3 +6,5 @@ pydantic==2.9.2
 
 # Dev tooling
 ruff==0.7.4
+pytest==8.3.3
+httpx==0.27.2

@@ -14,3 +14,10 @@ known-first-party = ["database", "horoscope_service", "main", "models"]
  
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.pytest.ini_options]
+# Explicitly puts this directory (containing main.py, database.py, etc.)
+# on the import path for tests. Without this, "import main" inside a test
+# file can fail depending on whether you run `pytest` vs `python -m pytest`.
+pythonpath = ["."]
+testpaths = ["tests"]
