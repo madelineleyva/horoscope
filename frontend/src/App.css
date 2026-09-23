@@ -20,7 +20,7 @@
 }
 
 .form select,
-.form input[type="range"] {
+.form input[type='range'] {
   font-size: 1rem;
   padding: 0.4rem;
 }

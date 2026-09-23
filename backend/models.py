@@ -1,12 +1,6 @@
-"""
-Pydantic models = your C# DTOs. FastAPI uses these to validate
-incoming requests and shape outgoing JSON automatically.
-"""
+from typing import Literal
 
 from pydantic import BaseModel
-from typing import Literal, Optional
-
-# --- Fixed presets (kept small on purpose, so our cache stays useful) ---
 
 ZodiacSign = Literal[
     "aries", "taurus", "gemini", "cancer", "leo", "virgo",
@@ -21,7 +15,6 @@ Mood = Literal[
 ChaosLevel = Literal[1, 2, 3]
 
 # Mood -> color mapping for the "mood ring" UI treatment.
-# Pick hex values now, easy to re-skin later.
 MOOD_COLORS: dict[str, str] = {
     "stressed": "#D62828",
     "anxious": "#F77F00",
@@ -46,7 +39,7 @@ class HoroscopeRequest(BaseModel):
     # Optional: when omitted, the LLM chooses the mood itself based on the
     # horoscope it generates (used by the Win98 /main page, which has no
     # mood dropdown). When provided, behaves exactly as before.
-    mood: Optional[Mood] = None
+    mood: Mood | None = None
     chaos_level: ChaosLevel
 
 

@@ -1,49 +1,66 @@
-import { useState } from "react";
-import { fetchHoroscope } from "./api";
-import "./App.css";
+import { useState } from 'react'
+import { fetchHoroscope } from './api'
+import './App.css'
 
 const SIGNS = [
-  "aries", "taurus", "gemini", "cancer", "leo", "virgo",
-  "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces",
-];
+  'aries',
+  'taurus',
+  'gemini',
+  'cancer',
+  'leo',
+  'virgo',
+  'libra',
+  'scorpio',
+  'sagittarius',
+  'capricorn',
+  'aquarius',
+  'pisces',
+]
 
 const MOODS = [
-  "stressed", "anxious", "calm", "neutral", "excited",
-  "passionate", "happy", "romantic", "bored",
-];
+  'stressed',
+  'anxious',
+  'calm',
+  'neutral',
+  'excited',
+  'passionate',
+  'happy',
+  'romantic',
+  'bored',
+]
 
 const CHAOS_LABELS = {
-  1: "Gentle",
-  2: "Playful",
-  3: "Unhinged",
-};
+  1: 'Gentle',
+  2: 'Playful',
+  3: 'Unhinged',
+}
 
 export default function App() {
-  const [sign, setSign] = useState(SIGNS[0]);
-  const [mood, setMood] = useState(MOODS[0]);
-  const [chaosLevel, setChaosLevel] = useState(2);
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [sign, setSign] = useState(SIGNS[0])
+  const [mood, setMood] = useState(MOODS[0])
+  const [chaosLevel, setChaosLevel] = useState(2)
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
     try {
-      const data = await fetchHoroscope({ sign, mood, chaos_level: chaosLevel });
-      setResult(data);
+      const data = await fetchHoroscope({ sign, mood, chaos_level: chaosLevel })
+      setResult(data)
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
   return (
     <div className="app">
       <h1>✨ Daily Horoscope</h1>
-      <p style={{ fontSize: "0.8rem" }}>
+      <p style={{ fontSize: '0.8rem' }}>
         <a href="/main">← Back to Win98 version</a>
       </p>
 
@@ -82,7 +99,7 @@ export default function App() {
         </label>
 
         <button type="submit" disabled={loading}>
-          {loading ? "Consulting the stars…" : "Get My Horoscope"}
+          {loading ? 'Consulting the stars…' : 'Get My Horoscope'}
         </button>
       </form>
 
@@ -98,10 +115,10 @@ export default function App() {
           <p className="horoscope-text">{result.horoscope_text}</p>
           <p className="meta">
             {result.sign} · {result.date} · viewed {result.view_count}x
-            {result.from_cache ? " · from cache" : " · freshly generated"}
+            {result.from_cache ? ' · from cache' : ' · freshly generated'}
           </p>
         </div>
       )}
     </div>
-  );
+  )
 }

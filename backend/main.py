@@ -6,15 +6,12 @@ Split routes into their own module once this grows.
 
 from datetime import date as date_cls
 
-from dotenv import load_dotenv
-load_dotenv()  # must run before horoscope_service reads the API key
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 import database
-from models import HoroscopeRequest, HoroscopeResponse, MOOD_COLORS
 from horoscope_service import generate_horoscope, generate_horoscope_auto_mood
+from models import MOOD_COLORS, HoroscopeRequest, HoroscopeResponse
 
 app = FastAPI(title="Horoscope API")
 
@@ -49,12 +46,12 @@ def get_horoscope(req: HoroscopeRequest):
             new_count = database.increment_view_count(cached["id"])
             cached["view_count"] = new_count
             return HoroscopeResponse(**cached, from_cache=True)
- 
+
         try:
             text = generate_horoscope(req.sign, req.mood, req.chaos_level, today)
         except Exception as exc:
-            raise HTTPException(status_code=502, detail=f"LLM generation failed: {exc}")
- 
+            raise HTTPException(status_code=502, detail=f"LLM generation failed: {exc}") from exc
+
         row = database.insert_horoscope(
             sign=req.sign,
             date=today,
@@ -65,7 +62,7 @@ def get_horoscope(req: HoroscopeRequest):
             mood_source="user",
         )
         return HoroscopeResponse(**row, from_cache=False)
- 
+
     # Auto-mood flow: mood is chosen by the LLM, so it isn't known until
     # after generation and isn't part of the cache lookup key.
     cached = database.get_cached_auto(req.sign, today, req.chaos_level)
@@ -73,12 +70,12 @@ def get_horoscope(req: HoroscopeRequest):
         new_count = database.increment_view_count(cached["id"])
         cached["view_count"] = new_count
         return HoroscopeResponse(**cached, from_cache=True)
- 
+
     try:
         text, chosen_mood = generate_horoscope_auto_mood(req.sign, req.chaos_level, today)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"LLM generation failed: {exc}")
- 
+        raise HTTPException(status_code=502, detail=f"LLM generation failed: {exc}") from exc
+
     row = database.insert_horoscope(
         sign=req.sign,
         date=today,

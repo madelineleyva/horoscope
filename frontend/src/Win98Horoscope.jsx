@@ -1,65 +1,75 @@
-import { useEffect, useState } from "react";
-import { fetchHoroscope } from "./api";
+import { useEffect, useState } from 'react'
+import { fetchHoroscope } from './api'
 
 const SIGNS = [
-  "aries", "taurus", "gemini", "cancer", "leo", "virgo",
-  "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces",
-];
+  'aries',
+  'taurus',
+  'gemini',
+  'cancer',
+  'leo',
+  'virgo',
+  'libra',
+  'scorpio',
+  'sagittarius',
+  'capricorn',
+  'aquarius',
+  'pisces',
+]
 
 const CHAOS_LABELS = {
-  1: "1 - Gentle",
-  2: "2 - Playful",
-  3: "3 - Unhinged",
-};
+  1: '1 - Gentle',
+  2: '2 - Playful',
+  3: '3 - Unhinged',
+}
 
 function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+  return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
 export default function Win98Horoscope() {
-  const [sign, setSign] = useState(SIGNS[0]);
-  const [chaosLevel, setChaosLevel] = useState(1);
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [sign, setSign] = useState(SIGNS[0])
+  const [chaosLevel, setChaosLevel] = useState(1)
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   // 98.css loads only when mounted
   useEffect(() => {
-    const link = document.createElement("link");
-    link.id = "win98-css";
-    link.rel = "stylesheet";
-    link.href = "https://unpkg.com/98.css";
-    document.head.appendChild(link);
+    const link = document.createElement('link')
+    link.id = 'win98-css'
+    link.rel = 'stylesheet'
+    link.href = 'https://unpkg.com/98.css'
+    document.head.appendChild(link)
 
     return () => {
-      document.getElementById("win98-css")?.remove();
-    };
-  }, []);
+      document.getElementById('win98-css')?.remove()
+    }
+  }, [])
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
     try {
       // LLM version so omit mood
-      const data = await fetchHoroscope({ sign, chaos_level: chaosLevel });
-      setResult(data);
+      const data = await fetchHoroscope({ sign, chaos_level: chaosLevel })
+      setResult(data)
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
   return (
     <div
       style={{
-        minHeight: "100vh",
-        background: "#008080",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2rem",
+        minHeight: '100vh',
+        background: '#008080',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem',
         fontFamily: '"Pixelated MS Sans Serif", Arial, sans-serif',
       }}
     >
@@ -109,15 +119,15 @@ export default function Win98Horoscope() {
               </select>
             </div>
 
-            <section className="field-row" style={{ justifyContent: "flex-end" }}>
+            <section className="field-row" style={{ justifyContent: 'flex-end' }}>
               <button type="submit" disabled={loading}>
-                {loading ? "Generating..." : "Generate"}
+                {loading ? 'Generating...' : 'Generate'}
               </button>
             </section>
           </form>
 
           {error && (
-            <div className="field-row" style={{ marginTop: 12, color: "#aa0000" }}>
+            <div className="field-row" style={{ marginTop: 12, color: '#aa0000' }}>
               Error: {error}
             </div>
           )}
@@ -125,7 +135,7 @@ export default function Win98Horoscope() {
           {result && (
             <fieldset style={{ marginTop: 16 }}>
               <legend>Your Horoscope</legend>
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <p style={{ flex: 1, margin: 0, lineHeight: 1.4 }}>
                   {result.horoscope_text}
                 </p>
@@ -135,8 +145,8 @@ export default function Win98Horoscope() {
                 style={{
                   marginTop: 12,
                   marginBottom: 0,
-                  textAlign: "center",
-                  textTransform: "capitalize",
+                  textAlign: 'center',
+                  textTransform: 'capitalize',
                 }}
               >
                 Mood: {result.mood}
@@ -148,7 +158,7 @@ export default function Win98Horoscope() {
         <div className="status-bar">
           <p className="status-bar-field">{sign && capitalize(sign)}</p>
           <p className="status-bar-field">
-            {result ? `Viewed ${result.view_count}x` : "Ready"}
+            {result ? `Viewed ${result.view_count}x` : 'Ready'}
           </p>
           <p className="status-bar-field">
             <a href="/classic">Classic version</a>
@@ -156,7 +166,7 @@ export default function Win98Horoscope() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function Heart({ color }) {
@@ -177,10 +187,10 @@ function Heart({ color }) {
            C 17.5 2, 20.5 0, 24 0
            C 28 0, 32 3, 32 8.5
            C 32 18, 16 29, 16 29 Z"
-        fill={color || "#D62828"}
+        fill={color || '#D62828'}
         stroke="#000"
         strokeWidth="1"
       />
     </svg>
-  );
+  )
 }

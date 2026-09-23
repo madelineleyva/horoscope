@@ -3,3 +3,6 @@ uvicorn[standard]==0.30.6
 anthropic>=1.0.0,<2
 python-dotenv==1.0.1
 pydantic==2.9.2
+
+# Dev tooling
+ruff==0.7.4

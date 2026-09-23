@@ -1,0 +1,16 @@
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# E/F: pyflakes + pycodestyle errors (bugs, unused imports, etc.)
+# I: import sorting (replaces isort)
+# UP: pyupgrade (flags outdated syntax patterns)
+# B: flake8-bugbear (common gotchas, e.g. mutable default args)
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["database", "horoscope_service", "main", "models"]
+ 
+[tool.ruff.format]
+quote-style = "double"
