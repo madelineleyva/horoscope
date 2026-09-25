@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchHoroscope } from './api'
 import Taskbar from "./Taskbar";
 import Win98Window from "./Win98Window";
+import { playDialUpSound, playErrorSound } from "./Sounds";
 
 const SIGNS = [
   'aries',
@@ -60,17 +61,18 @@ export default function Win98Horoscope() {
   }, []);
 
   async function handleSubmit(e) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    playDialUpSound();
     try {
-      // LLM version so omit mood
-      const data = await fetchHoroscope({ sign, chaos_level: chaosLevel })
-      setResult(data)
+      const data = await fetchHoroscope({ sign, chaos_level: chaosLevel });
+      setResult(data);
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
+      playErrorSound();
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 

@@ -4,7 +4,7 @@ An LLM-assisted daily horoscope app with a "mood ring" twist!
 
 Pick your sign, dial in a chaos level, and have Claude write you a horoscope and generate a matching mood, shown as a color-shifting heart. <3
 
-Shipped with two frontend options: a spooky crystal ball-esque base UI and (my personal fav and reason behind the name) a fully-committed Windows 98 recreation. 
+Shipped with two frontend options: a Haunted Mansion inspired crystal ball "classic" UI and (my personal fav and reason behind the name) a fully-committed Windows 98 recreation. 
 
 This local dev project was created in conjunction with Claude/Anthropic tools. Mostly meant to practice LLM intervention and the Anthropic SDK.
 
@@ -20,15 +20,24 @@ This local dev project was created in conjunction with Claude/Anthropic tools. M
 - Two front ends sharing one backend: a modern React UI (`/classic`) and a
   Windows 98-styled recreation using [98.css](https://jdan.github.io/98.css/)
   (`/main`, the default landing page)
+   - **`/classic`** — a "Haunted Mansion" theme: the form lives inside a
+    glowing crystal orb, results appear on a torn-parchment scroll, and
+    consulting the orb triggers a synthesized thunderclap
+- All sound effects (dial-up handshake, error beep, thunderclap) are
+  synthesized live in the browser via the Web Audio API — no audio files,
+  nothing downloaded, and nothing that reproduces any real OS's actual
+  sound assets (to be improved)
+- Custom favicons per page (a tiny crystal ball inside a Win98 window for
+  `/main`, a glowing orb for `/classic`), swapped dynamically on route change
 
 ## Tech Stack
 
-| Layer    | Choice                                      |
-| -------- | -------------------------------------------- |
-| Frontend | React + Vite, React Router                   |
-| Backend  | FastAPI (Python), Pydantic                    |
-| LLM      | Claude (Anthropic Python SDK)                 |
-| Database | SQLite                                        |
+| Layer    | Choice                                                   |
+| -------- | -------------------------------------------------------- |
+| Frontend | React + Vite, React Router                               |
+| Backend  | FastAPI (Python), Pydantic                               |
+| LLM      | Claude (Anthropic Python SDK)                            |
+| Database | SQLite                                                   |
 | Tooling  | Ruff (backend lint/format), ESLint + Prettier (frontend) |
 
 ## Architecture
@@ -87,6 +96,23 @@ cd backend && ruff check . && ruff format .
 cd frontend && npm run lint && npm run format
 ```
 
+### Running tests
+ 
+```bash
+cd backend
+pytest
+```
+ 
+Tests mock every real Claude API call, so running the suite never costs API
+credits or requires a real key (a dummy `ANTHROPIC_API_KEY` is set
+automatically in `tests/conftest.py`). Coverage so far: SQLite cache
+behavior (including the schema-migration path), prompt building, the
+LLM-response JSON parsing, and the `/horoscope` endpoint's cache hit/miss
+logic for both the user-mood and LLM-mood flows.
+ 
+A GitHub Actions workflow (`.github/workflows/ci.yml`) runs lint + tests for
+both backend and frontend on every push and pull request to `main`.
+
 ## How caching works
 
 Each request is keyed on `(sign, date, chaos_level)`, plus `mood` when the
@@ -98,14 +124,13 @@ is served from SQLite and bumps `view_count`.
 
 Rough priority order for what's next:
 
-1. **Code quality & docs** _(in progress - almost done)_ — linting, formatting, this README
-2. **Tests + CI** — pytest for backend logic (cache behavior, mood parsing),
+1. **Code quality & docs** _(done)_ — linting, formatting, this README
+2. **Tests + CI** _(done)_ — pytest for backend logic (cache behavior, mood parsing),
    GitHub Actions to run lint/tests on every push
 3. **More features** — a `/stats` endpoint surfacing view counts per sign,
    a horoscope history view, additional retro themes alongside Win98, Swap SQLite 
    connection string for Postgres when deploying, Add a "share my horoscope" image export,
    Rate-limit the generation path before this ever goes too public lol
-
 4. **Deploy live** — a real URL, so this stops being `localhost`-only
 
 ## License

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchHoroscope } from "./api";
+import { playThunderClap } from "./Sounds";
 import "./App.css";
 
 const SIGNS = [
@@ -46,6 +47,7 @@ export default function App() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    playThunderClap();
     try {
       const data = await fetchHoroscope({ sign, mood, chaos_level: chaosLevel });
       setResult(data);
