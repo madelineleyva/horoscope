@@ -17,7 +17,9 @@ import { Link } from "react-router-dom";
 export default function Taskbar({ menuItems, runningApp }) {
   const [open, setOpen] = useState(false);
   const [now, setNow] = useState(new Date());
+  const [showBsod, setShowBsod] = useState(false);
   const menuRef = useRef(null);
+  const clockClicks = useRef([]);
 
   // Classic taskbar clock - updates once a minute, that's all it needs.
   useEffect(() => {
@@ -37,6 +39,16 @@ export default function Taskbar({ menuItems, runningApp }) {
   }, []);
 
   const timeLabel = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+  // A little easter egg: click the clock 5 times fast.
+  function handleClockClick() {
+    const nowMs = Date.now();
+    clockClicks.current = [...clockClicks.current, nowMs].filter((t) => nowMs - t < 3000);
+    if (clockClicks.current.length >= 5) {
+      clockClicks.current = [];
+      setShowBsod(true);
+    }
+  }
 
     return (
     <div ref={menuRef} style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000 }}>
@@ -131,11 +143,53 @@ export default function Taskbar({ menuItems, runningApp }) {
 
         <div
           className="window"
+          onClick={handleClockClick}
           style={{ padding: "3px 8px", margin: 0, fontSize: 13 }}
         >
           {timeLabel}
         </div>
       </div>
+      {showBsod && <BlueScreen onDismiss={() => setShowBsod(false)} />}
+    </div>
+  );
+}
+
+function BlueScreen({ onDismiss }) {
+  useEffect(() => {
+    function handleKeyDown() {
+      onDismiss();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onDismiss]);
+ 
+  return (
+    <div
+      onClick={onDismiss}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 2000,
+        background: "#0000AA",
+        color: "#ffffff",
+        fontFamily: "'Courier New', monospace",
+        fontSize: 18,
+        lineHeight: 1.6,
+        padding: "10vh 8vw",
+        cursor: "pointer",
+      }}
+    >
+      <p>HOROSCOPE98</p>
+      <p style={{ marginTop: "1.5em" }}>
+        A fatal cosmic exception has occurred at 0x0BADF00D in module
+        DESTINY.SYS.
+      </p>
+      <p>The current zodiac sign could not be written to the void.</p>
+      <p style={{ marginTop: "1.5em" }}>
+        * Press any key to return to your regularly scheduled fate.
+        <br />* If this error recurs, consult a real astrologer.
+      </p>
+      <p style={{ marginTop: "2em" }}>(click anywhere to dismiss)</p>
     </div>
   );
 }
