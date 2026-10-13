@@ -25,6 +25,13 @@ const CHAOS_LABELS = {
   3: '3 - Unhinged',
 }
 
+const GENERATING_MESSAGES = [
+  "Generating...",
+  "Dialing BBS...",
+  "Reading stars via 56k...",
+  "Buffering fate...",
+];
+
 const START_MENU_ITEMS = [
   { label: "Classic Version", icon: "🖥️", href: "/classic" },
   { label: "API Docs", icon: "📄", href: "http://localhost:8000/docs", external: true },
@@ -42,6 +49,7 @@ export default function Win98Horoscope() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [windowState, setWindowState] = useState("open")
+  const [loadingText, setLoadingText] = useState(GENERATING_MESSAGES[0]);
 
   // 98.css loads only when mounted
   useEffect(() => {
@@ -64,6 +72,7 @@ export default function Win98Horoscope() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setLoadingText(GENERATING_MESSAGES[Math.floor(Math.random() * GENERATING_MESSAGES.length)]);
     playDialUpSound();
     try {
       const data = await fetchHoroscope({ sign, chaos_level: chaosLevel });

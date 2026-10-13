@@ -19,6 +19,13 @@ const CHAOS_LABELS = {
   3: "Unhinged",
 };
 
+const CONSULTING_MESSAGES = [
+  "Consulting…",
+  "The orb stirs…",
+  "Peering into the mist…",
+  "Listening for whispers…",
+];
+
 function formatDate(isoDate) {
   return new Date(`${isoDate}T00:00:00`).toLocaleDateString(undefined, {
     month: "long",
@@ -38,6 +45,8 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [loadingText, setLoadingText] = useState(CONSULTING_MESSAGES[0]);
+  const [lightningKey, setLightningKey] = useState(0);
 
   useEffect(() => {
     document.getElementById("favicon")?.setAttribute("href", "/favicon-mansion.svg");
@@ -47,7 +56,15 @@ export default function App() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setLoadingText(CONSULTING_MESSAGES[Math.floor(Math.random() * CONSULTING_MESSAGES.length)]);
     playThunderClap();
+
+    // Prefers-reduced-motion in effect for those that are photosensitive.
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!prefersReducedMotion) {
+      setLightningKey((k) => k + 1);
+    }
+
     try {
       const data = await fetchHoroscope({ sign, mood, chaos_level: chaosLevel });
       setResult(data);
@@ -111,6 +128,8 @@ export default function App() {
         </div>
         <div className="plinth" />
       </div>
+
+      {lightningKey > 0 && <div key={lightningKey} className="lightning-flash" />}
 
       {error && <p className="error">The spirits could not be reached: {error}</p>}
 
