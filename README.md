@@ -13,14 +13,17 @@ This local dev project was created in conjunction with Claude/Anthropic tools. M
 
 - LLM-generated horoscopes via the Claude API, with adjustable "chaos level"
   (1 = gentle, 3 = unhinged)
-- The LLM also chooses a mood from a fixed set of 9 presets based on the
-  horoscope it writes, mapped to a color for the mood-ring visual
-- Daily caching per sign — horoscopes are generated once per sign/day/chaos
-  combo and served from SQLite afterward, with a view counter
-- Two front ends sharing one backend: a modern React UI (`/classic`) and a
-  Windows 98-styled recreation using [98.css](https://jdan.github.io/98.css/)
-  (`/main`, the default landing page)
-   - **`/classic`** — a "Haunted Mansion" theme: the form lives inside a
+- The LLM also chooses a mood from a fixed set of 9 presets based on the horoscope it writes, mapped
+  to a color for the mood-ring visual. This uses a forced tool call validated against a Pydantic model, so the response shape is enforced by the API rather than parsed out of free text
+- Daily caching — each distinct request is generated once per day and served
+  from SQLite afterward, with a view counter (see [How caching works](#how-caching-works))
+- Two themed front ends sharing one backend: 
+  - **`/main`** (default landing page) — a Windows 98 recreation using
+    [98.css](https://jdan.github.io/98.css/), with a draggable/minimizable
+    window (working minimize, maximize/restore, and close), a taskbar with
+    a functioning Start menu, and a synthesized dial-up connection sound on
+    generate
+  - **`/classic`** — a "Haunted Mansion" theme: the form lives inside a
     glowing crystal orb, results appear on a torn-parchment scroll, and
     consulting the orb triggers a synthesized thunderclap
 - All sound effects (dial-up handshake, error beep, thunderclap) are
@@ -55,10 +58,9 @@ This local dev project was created in conjunction with Claude/Anthropic tools. M
                          └──────────────┘
 ```
 
-Each `/horoscope` request is keyed on `(sign, date, chaos_level)`, plus
-`mood` when the caller supplies one (the classic UI lets the user pick a
-mood; the Win98 UI lets the LLM decide it — see `mood_source` in the schema).
-A cache hit skips the LLM call entirely and just bumps a view counter.
+Each `/horoscope` request is looked up in SQLite first. A hit skips the LLM
+call entirely and just bumps a view counter; a miss calls Claude once and
+stores the result.
 
 ## Getting Started
 
@@ -67,7 +69,7 @@ A cache hit skips the LLM call entirely and just bumps a view counter.
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\Activate.ps1 # We're working with Windows but adjust as needed
+source venv/bin/activate      # Windows: venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 cp .env.example .env          # then throw in your real ANTHROPIC_API_KEY
 uvicorn main:app --reload
@@ -106,9 +108,11 @@ pytest
 Tests mock every real Claude API call, so running the suite never costs API
 credits or requires a real key (a dummy `ANTHROPIC_API_KEY` is set
 automatically in `tests/conftest.py`). Coverage so far: SQLite cache
-behavior (including the schema-migration path), prompt building, the
-LLM-response JSON parsing, and the `/horoscope` endpoint's cache hit/miss
-logic for both the user-mood and LLM-mood flows.
+behavior, migrations from both older schema versions (with data preserved),
+prompt building, structured-output validation (including malformed,
+truncated and out-of-list responses), and the `/horoscope` endpoint for both
+mood flows, including regression tests for a cache-key collision and for
+two concurrent requests racing to fill the same cache slot.
  
 A GitHub Actions workflow (`.github/workflows/ci.yml`) runs lint + tests for
 both backend and frontend on every push and pull request to `main`.
@@ -120,19 +124,64 @@ caller supplies one. First request for a given combo on a given day calls
 Claude and stores the result; every subsequent identical request that day 
 is served from SQLite and bumps `view_count`.
 
+## Design decisions
+ 
+**Why `requested_mood` is separate from `mood`.** The first version keyed the
+cache on `mood` and distinguished the two flows with a partial index. That
+broke whenever Claude happened to pick the same mood a user had already
+requested: the insert hit a UNIQUE constraint *after* the paid LLM call and
+returned a 500 with nothing cached. Separating "what was asked" from "what
+was shown" removes the collision by construction, and the insert is now
+`INSERT OR IGNORE`, so two concurrent identical requests can't crash each
+other; the loser serves the winner's row.
+ 
+**Schema migrations.** The schema version lives in SQLite's
+`PRAGMA user_version`. `init_db()` upgrades older databases in a single
+transaction (SQLite can't alter a UNIQUE constraint, so it rebuilds the
+table) and keeps every existing row. Both previous schemas are covered by
+tests.
+ 
+**Structured output instead of "please reply in JSON".** The auto-mood flow
+forces a tool call whose input schema is generated from the `MoodReading`
+Pydantic model, then validates the response against that same model. An
+out-of-list mood or a truncated response is an explicit error rather than a
+silent fallback to "neutral". One model is the single source of truth for the
+contract.
+ 
+**Explicit failure handling.** The Anthropic client has a 30s timeout and two
+retries instead of the SDK defaults, and LLM failures surface as a 502.
+ 
+**LLM calls are always mocked in tests.** The suite is free, fast and
+deterministic, and CI never needs a secret.
+ 
+## Known limitations
+ 
+- **Date is the server's local date**, not the user's, so "today" flips at
+  server midnight.
+- **No rate limiting or auth.** Fine on localhost; required before deploying,
+  since every cache miss costs real money.
+- **Concurrent cache misses can still both call the LLM.** The race no longer
+  causes an error, but it can cost a duplicate call. Fixing that would need
+  per-key locking or a single-flight guard.
+- **The 502 response includes the underlying error text**, which is handy in
+  development but should be a generic message in production.
+- **CORS origins and the API URL are hardcoded to localhost.**
+- Output quality is judged by eye. There's no automated evaluation of the
+  horoscopes themselves.
+
 ## Roadmap
 
 Rough priority order for what's next:
 
-1. **Code quality & docs** _(done)_ — linting, formatting, this README
-2. **Tests + CI** _(done)_ — pytest for backend logic (cache behavior, mood parsing),
-   GitHub Actions to run lint/tests on every push
+1. ~~**Code quality & docs**~~ _(done)_ — linting, formatting, this README
+2. ~~**Tests + CI**~~ _(done)_ — pytest for backend logic, GitHub Actions running
+   lint/tests on every push
 3. **More features** — a `/stats` endpoint surfacing view counts per sign,
-   a horoscope history view, additional retro themes alongside Win98, Swap SQLite 
-   connection string for Postgres when deploying, Add a "share my horoscope" image export,
+   a horoscope history view, ~~additional retro themes alongside Win98~~ (added haunted mansion), 
+   Swap SQLite connection string for Postgres when deploying, Add a "share my horoscope" image export,
    Rate-limit the generation path before this ever goes too public lol
 4. **Deploy live** — a real URL, so this stops being `localhost`-only
 
 ## License
 
-Personal project, not currently licensed for reuse.
+MIT. See [LICENSE](LICENSE).

@@ -101,3 +101,57 @@ def test_llm_failure_returns_502(monkeypatch, tmp_path):
         )
         assert response.status_code == 502
         assert "LLM generation failed" in response.json()["detail"]
+
+
+def test_user_and_auto_requests_can_both_land_on_the_same_mood(monkeypatch, tmp_path):
+    """Regression test for the cache-key collision. A user picks 'excited' on
+    the classic page; the Win98 page then asks Claude to choose, and the fake
+    Claude picks 'excited' too. This used to be a 500 after the LLM call."""
+    client = make_client(monkeypatch, tmp_path)
+
+    with client:
+        classic = client.post(
+            "/horoscope", json={"sign": "aries", "mood": "excited", "chaos_level": 3}
+        )
+        win98 = client.post("/horoscope", json={"sign": "aries", "chaos_level": 3})
+
+        assert classic.status_code == 200
+        assert win98.status_code == 200
+        assert win98.json()["mood"] == "excited"
+        assert win98.json()["from_cache"] is False
+        assert win98.json()["horoscope_text"] != classic.json()["horoscope_text"]
+
+        # And each flow still hits its own cache entry afterwards.
+        assert client.post("/horoscope", json={"sign": "aries", "chaos_level": 3}).json()[
+            "from_cache"
+        ]
+
+
+def test_losing_a_cache_race_serves_the_winner_instead_of_failing(monkeypatch, tmp_path):
+    """Two identical requests can both miss the cache. Simulate the other
+    request finishing first, while this one is still inside the LLM call."""
+    client = make_client(monkeypatch, tmp_path)
+    today = main.date_cls.today().isoformat()
+
+    def generate_while_a_rival_wins(sign, mood, chaos_level, date):
+        main.database.insert_horoscope(
+            sign=sign,
+            date=today,
+            chaos_level=chaos_level,
+            requested_mood=mood,
+            mood=mood,
+            mood_color=main.MOOD_COLORS[mood],
+            horoscope_text="the rival's horoscope",
+        )
+        return "my horoscope"
+
+    monkeypatch.setattr(main, "generate_horoscope", generate_while_a_rival_wins)
+
+    with client:
+        response = client.post("/horoscope", json={"sign": "leo", "mood": "calm", "chaos_level": 1})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["horoscope_text"] == "the rival's horoscope"
+    assert body["from_cache"] is True
+    assert body["view_count"] == 2

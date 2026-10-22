@@ -1,9 +1,19 @@
 """
-SQLite cache layer
+SQLite cache layer.
 
-Cache key = (sign, date, mood, chaos_level) — matches the UNIQUE
-constraint below, so re-requesting the same combo on the same day
-never calls the LLM twice.
+Cache key = (sign, date, chaos_level, requested_mood)
+
+`requested_mood` is what the *caller asked for*: a real mood when the user
+picked one (classic page), or the sentinel AUTO_MOOD when they let Claude
+choose (Win98 page). It is deliberately separate from `mood`, which is what
+actually got stored and displayed. For an auto request, `mood` is whatever
+Claude picked, so two different requests can legitimately end up showing
+the same mood without ever fighting over the same cache slot.
+
+(The first version of this schema keyed the cache on `mood` itself, which
+meant an auto request that happened to pick "happy" collided with a user
+request for "happy" and crashed with an IntegrityError *after* the paid
+LLM call. See tests/test_database.py::test_user_and_auto_requests_can_share_a_displayed_mood.)
 """
 
 import sqlite3
@@ -12,34 +22,26 @@ from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "horoscopes.db"
 
+# Not a member of models.Mood, so it can never collide with a real mood.
+AUTO_MOOD = "auto"
+
+# Stored in SQLite's built-in PRAGMA user_version.
+SCHEMA_VERSION = 2
+
 CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS horoscopes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sign TEXT NOT NULL,
     date TEXT NOT NULL,
+    chaos_level INTEGER NOT NULL,
+    requested_mood TEXT NOT NULL,
     mood TEXT NOT NULL,
     mood_color TEXT NOT NULL,
-    chaos_level INTEGER NOT NULL,
     horoscope_text TEXT NOT NULL,
     view_count INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    -- 'user': mood was chosen by the caller (original UI).
-    -- 'llm': mood was chosen by Claude as part of generation (Win98 page).
-    mood_source TEXT NOT NULL DEFAULT 'user',
-    UNIQUE(sign, date, mood, chaos_level)
+    UNIQUE(sign, date, chaos_level, requested_mood)
 );
-"""
-
-# For 'llm' rows the mood isn't known until after generation, so we cache
-# one row per (sign, date, chaos_level) regardless of which mood Claude
-# picked. A partial unique index lets us enforce that only for these rows,
-# without touching the 'user' rows' existing (sign, date, mood, chaos_level)
-# uniqueness above. This must run AFTER the mood_source migration below,
-# since it references that column.
-CREATE_INDEX_SQL = """
-CREATE UNIQUE INDEX IF NOT EXISTS idx_auto_mood_cache
-    ON horoscopes(sign, date, chaos_level)
-    WHERE mood_source = 'llm';
 """
 
 
@@ -54,46 +56,68 @@ def get_conn():
         conn.close()
 
 
-def init_db():
+def _migrate_legacy_table(conn: sqlite3.Connection) -> None:
+    """Upgrades a pre-v2 `horoscopes` table in place, keeping every row.
+
+    Two legacy shapes exist in the wild: v0 (no mood_source column) and v1
+    (mood_source 'user' | 'llm'). In both, rows from the old user-mood flow
+    keep their mood as the requested_mood, and v1's 'llm' rows become AUTO.
+
+    SQLite can't change a UNIQUE constraint with ALTER TABLE, so this
+    rebuilds the table. It all runs in one transaction, so a crash midway
+    leaves the old table untouched.
+    """
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(horoscopes)")}
+    if "mood_source" in columns:
+        requested = f"CASE WHEN mood_source = 'llm' THEN '{AUTO_MOOD}' ELSE mood END"
+    else:
+        requested = "mood"
+
+    conn.executescript(
+        f"""
+        BEGIN;
+        ALTER TABLE horoscopes RENAME TO horoscopes_legacy;
+        {CREATE_TABLE_SQL}
+        INSERT INTO horoscopes
+            (id, sign, date, chaos_level, requested_mood, mood, mood_color,
+             horoscope_text, view_count, created_at)
+        SELECT id, sign, date, chaos_level, {requested}, mood, mood_color,
+               horoscope_text, view_count, created_at
+        FROM horoscopes_legacy;
+        DROP TABLE horoscopes_legacy;
+        PRAGMA user_version = {SCHEMA_VERSION};
+        COMMIT;
+        """
+    )
+
+
+def init_db() -> None:
+    """Creates the schema, or migrates an older one. Safe to call repeatedly."""
     with get_conn() as conn:
-        conn.executescript(CREATE_TABLE_SQL)
+        version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version >= SCHEMA_VERSION:
+            return
 
-        # Migration: databases created before mood_source existed won't have
-        # the column yet (CREATE TABLE IF NOT EXISTS won't add it). Add it
-        # if missing so existing local .db files keep working. This has to
-        # run before the index below, since that index references the column.
-        columns = [row["name"] for row in conn.execute("PRAGMA table_info(horoscopes)")]
-        if "mood_source" not in columns:
-            conn.execute(
-                "ALTER TABLE horoscopes ADD COLUMN mood_source TEXT NOT NULL DEFAULT 'user'"
-            )
-
-        conn.executescript(CREATE_INDEX_SQL)
-
-
-def get_cached(sign: str, date: str, mood: str, chaos_level: int):
-    """Look up today's row for this exact combo. Returns None on a miss."""
-    with get_conn() as conn:
-        row = conn.execute(
-            """
-            SELECT * FROM horoscopes
-            WHERE sign = ? AND date = ? AND mood = ? AND chaos_level = ?
-            """,
-            (sign, date, mood, chaos_level),
+        table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'horoscopes'"
         ).fetchone()
-        return dict(row) if row else None
+
+        if table_exists:
+            _migrate_legacy_table(conn)
+        else:
+            conn.executescript(CREATE_TABLE_SQL + f"PRAGMA user_version = {SCHEMA_VERSION};")
 
 
-def get_cached_auto(sign: str, date: str, chaos_level: int):
-    """Cache lookup for the LLM-picks-the-mood flow. Mood isn't part of the
-    key here since it isn't known until Claude generates it."""
+def get_cached(sign: str, date: str, chaos_level: int, requested_mood: str | None = None):
+    """Look up today's row for this request. Pass requested_mood=None for
+    the LLM-picks-the-mood flow. Returns None on a miss."""
     with get_conn() as conn:
         row = conn.execute(
             """
             SELECT * FROM horoscopes
-            WHERE sign = ? AND date = ? AND chaos_level = ? AND mood_source = 'llm'
+            WHERE sign = ? AND date = ? AND chaos_level = ? AND requested_mood = ?
             """,
-            (sign, date, chaos_level),
+            (sign, date, chaos_level, requested_mood or AUTO_MOOD),
         ).fetchone()
         return dict(row) if row else None
 
@@ -114,22 +138,44 @@ def increment_view_count(row_id: int) -> int:
 def insert_horoscope(
     sign: str,
     date: str,
+    chaos_level: int,
+    requested_mood: str | None,
     mood: str,
     mood_color: str,
-    chaos_level: int,
     horoscope_text: str,
-    mood_source: str = "user",
-) -> dict:
+) -> tuple[dict, bool]:
     """Stores a freshly-generated horoscope with view_count starting at 1
-    (the request that triggered generation counts as the first view)."""
+    (the request that triggered generation counts as the first view).
+
+    Returns (row, created). If another request stored the same cache key
+    while we were waiting on the LLM, nothing is overwritten and you get
+    that existing row back with created=False, so the caller can serve it
+    as a cache hit instead of crashing on a UNIQUE violation.
+    """
     with get_conn() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO horoscopes
-                (sign, date, mood, mood_color, chaos_level, horoscope_text, view_count, mood_source)
-            VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+            INSERT OR IGNORE INTO horoscopes
+                (sign, date, chaos_level, requested_mood, mood, mood_color,
+                 horoscope_text, view_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
             """,
-            (sign, date, mood, mood_color, chaos_level, horoscope_text, mood_source),
+            (
+                sign,
+                date,
+                chaos_level,
+                requested_mood or AUTO_MOOD,
+                mood,
+                mood_color,
+                horoscope_text,
+            ),
         )
-        row = conn.execute("SELECT * FROM horoscopes WHERE id = ?", (cursor.lastrowid,)).fetchone()
-        return dict(row)
+        created = cursor.rowcount == 1
+        row = conn.execute(
+            """
+            SELECT * FROM horoscopes
+            WHERE sign = ? AND date = ? AND chaos_level = ? AND requested_mood = ?
+            """,
+            (sign, date, chaos_level, requested_mood or AUTO_MOOD),
+        ).fetchone()
+        return dict(row), created

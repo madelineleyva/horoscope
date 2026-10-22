@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 ZodiacSign = Literal[
     "aries",
@@ -70,3 +70,18 @@ class HoroscopeResponse(BaseModel):
     horoscope_text: str
     view_count: int
     from_cache: bool
+
+
+class MoodReading(BaseModel):
+    """What Claude must return when it picks the mood itself.
+    This model is the single source of truth for that contract: its JSON
+    Schema is sent to the API as a tool's input_schema, and the response is
+    validated against the same model, so the prompt, the schema and the
+    parser can't drift apart.
+    """
+
+    mood: Mood = Field(description="The one mood from the fixed list that best fits the horoscope.")
+    horoscope: str = Field(
+        min_length=1,
+        description="The horoscope text: 3-5 sentences, addressed to the reader as 'you'.",
+    )
